@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fastline Logistics | Track Your Shipment</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+
+        /* Header - Clean Style Like Your Netlify Site */
+        .header {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0f172a;
+            text-decoration: none;
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: #3b82f6;
+            color: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+        
+        .nav-links a {
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9375rem;
+            transition: color 0.2s;
+        }
+        
+        .nav-links a:hover {
+            color: #3b82f6;
+        }
+
+        /* Hero Section - Like Your Netlify Site */
+        .hero {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            padding: 4rem 2rem;
+            text-align: center;
+            color: white;
+        }
+        
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .hero p {
+            font-size: 1.125rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+
+        /* Search Box - Clean Style */
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .search-input {
+            flex: 1;
+            border: none;
+            padding: 1rem 1.25rem;
+            font-size: 1rem;
+            outline: none;
+            border-radius: 8px;
+        }
+        
+        .search-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .search-btn:hover {
+            background: #2563eb;
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+        
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Results */
+        .results {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Status Card */
+        .status-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .status-card.delivered { border-left-color: #10b981; }
+        .status-card.transit { border-left-color: #f59e0b; }
+        .status-card.exception { border-left-color: #ef4444; }
+        
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .status-info h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 0.25rem;
+        }
+        
+        .status-info p {
+            color: #64748b;
+        }
+        
+        .tracking-number-box {
+            text-align: right;
+        }
+        
+        .tracking-number-box .label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .tracking-number-box .number {
+            font-family: monospace;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        /* Map Section */
+        .map-section {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .section-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        #map {
+            height: 400px;
+            border-radius: 12px;
+            background: #f1f5f9;
+        }
+
+        /* Info Cards Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .info-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .info-card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+        
+        .info-value {
+            font-weight: 500;
+            color: #0f172a;
+            text-align: right;
+            max-width: 60%;
+            word-break: break-word;
+        }
+
+        /* Timeline */
+        .timeline-section {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0.5rem;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e2e8f0;
+        }
+        
+        .timeline-item {
+            position: relative;
+            padding-bottom: 1.5rem;
+        }
+        
+        .timeline-item:last-child {
+            padding-bottom: 0;
+        }
+        
+        .timeline-dot {
+            position: absolute;
+            left: -2rem;
+            top: 0.25rem;
+            width: 1rem;
+            height: 1rem;
+            border-radius: 50%;
+            background: #10b981;
+            border: 3px solid white;
+            box-shadow: 0 0 0 2px #10b981;
+        }
+        
+        .timeline-item.pending .timeline-dot {
+            background: #cbd5e1;
+            box-shadow: 0 0 0 2px #cbd5e1;
+        }
+        
+        .timeline-item.current .timeline-dot {
+            background: #f59e0b;
+            box-shadow: 0 0 0 2px #f59e0b;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 2px #f59e0b; }
+            50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.3); }
+        }
+        
+        .timeline-content {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 1rem;
+        }
+        
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+        
+        .timeline-title {
+            font-weight: 600;
+            color: #0f172a;
+        }
+        
+        .timeline-date {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+        
+        .timeline-location {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        /* Footer */
+        .footer {
+            background: #0f172a;
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            margin-top: 4rem;
+        }
+        
+        .footer-logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .footer p {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 1.875rem; }
+            .search-container { flex-direction: column; }
+            .info-grid { grid-template-columns: 1fr; }
+            .status-header { flex-direction: column; text-align: center; gap: 1rem; }
+            .tracking-number-box { text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="#" class="logo">
+                <div class="logo-icon">🚛</div>
+                <span>Fastline Logistics</span>
+            </a>
+            <nav class="nav-links">
+                <a href="#">Home</a>
+                <a href="#">Track</a>
+                <a href="#">Services</a>
+                <a href="#">Contact</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>Track Your Shipment</h1>
+        <p>Enter your tracking number to get real-time updates</p>
+        
+        <div class="search-container">
+            <input type="text" class="search-input" id="trackingInput" placeholder="Enter tracking number (e.g., FL-5326530558)">
+            <button class="search-btn" onclick="trackShipment()">Track</button>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Searching for your shipment...</p>
+        </div>
+
+        <!-- Results -->
+        <div class="results" id="results">
+            <!-- Status Card -->
+            <div class="status-card" id="statusCard">
+                <div class="status-header">
+                    <div class="status-info">
+                        <h2 id="statusTitle">In Transit</h2>
+                        <p id="statusDesc">Your shipment is on its way</p>
+                    </div>
+                    <div class="tracking-number-box">
+                        <div class="label">Tracking Number</div>
+                        <div class="number" id="trackingNumber">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map -->
+            <div class="map-section">
+                <h3 class="section-title">📍 Live Location</h3>
+                <div id="map"></div>
+            </div>
+
+            <!-- Info Grid -->
+            <div class="info-grid">
+                <!-- Sender Info -->
+                <div class="info-card">
+                    <h3>📤 Sender Information</h3>
+                    <div class="info-row">
+                        <span class="info-label">Name</span>
+                        <span class="info-value" id="senderName">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Reference</span>
+                        <span class="info-value" id="senderRef">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Address</span>
+                        <span class="info-value" id="senderAddress">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Post Code</span>
+                        <span class="info-value" id="senderPostcode">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Phone</span>
+                        <span class="info-value" id="senderPhone">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Country</span>
+                        <span class="info-value" id="senderCountry">-</span>
+                    </div>
+                </div>
+
+                <!-- Receiver Info -->
+                <div class="info-card">
+                    <h3>📥 Receiver Information</h3>
+                    <div class="info-row">
+                        <span class="info-label">Name</span>
+                        <span class="info-value" id="receiverName">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Address</span>
+                        <span class="info-value" id="receiverAddress">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Post Code</span>
+                        <span class="info-value" id="receiverPostcode">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Phone</span>
+                        <span class="info-value" id="receiverPhone">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Country</span>
+                        <span class="info-value" id="receiverCountry">-</span>
+                    </div>
+                </div>
+
+                <!-- Shipment Details -->
+                <div class="info-card">
+                    <h3>📦 Shipment Details</h3>
+                    <div class="info-row">
+                        <span class="info-label">Service Type</span>
+                        <span class="info-value" id="serviceType">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Weight</span>
+                        <span class="info-value" id="weight">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Pieces</span>
+                        <span class="info-value" id="pieces">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Route Number</span>
+                        <span class="info-value" id="route">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Total Charges</span>
+                        <span class="info-value" id="totalCharges">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="timeline-section">
+                <h3 class="section-title">🚚 Shipment Progress</h3>
+                <div class="timeline" id="timeline">
+                    <!-- Timeline items -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-logo">Fastline Logistics</div>
+        <p>© 2026 Fastline Logistics. All rights reserved.</p>
+    </footer>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <script>
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyC89RwQp0vXTSvyzCtChIZnjsPNZjLtNfk",
+            authDomain: "fastline-logistics.firebaseapp.com",
+            projectId: "fastline-logistics",
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // City coordinates
+        const cityCoords = {
+            'USA': [39.8283, -98.5795],
+            'MALAYSIA': [4.2105, 101.9758],
+            'SINGAPORE': [1.3521, 103.8198],
+            'THAILAND': [15.8700, 100.9925],
+            'CHINA': [35.8617, 104.1954],
+            'UK': [55.3781, -3.4360],
+            'GERMANY': [51.1657, 10.4515]
+        };
+
+        let map;
+
+        async function trackShipment() {
+            const trackingNum = document.getElementById('trackingInput').value.trim().toUpperCase();
+            if (!trackingNum) {
+                alert('Please enter a tracking number');
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+
+            try {
+                const doc = await db.collection("shipments").doc(trackingNum).get();
+                document.getElementById('loading').style.display = 'none';
+
+                if (doc.exists) {
+                    displayResults(doc.data(), trackingNum);
+                } else {
+                    alert('Tracking number not found');
+                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loading').style.display = 'none';
+                alert('Error connecting to database');
+            }
+        }
+
+        function displayResults(data, trackingNum) {
+            const status = data.status || 'transit';
+            
+            // Update status card
+            const statusCard = document.getElementById('statusCard');
+            statusCard.className = 'status-card ' + status;
+            document.getElementById('statusTitle').textContent = data.statusTitle || status;
+            document.getElementById('statusDesc').textContent = data.statusDesc || 'Your shipment is being processed';
+            document.getElementById('trackingNumber').textContent = trackingNum;
+
+            // Sender Info - ALL FIELDS
+            if (data.sender) {
+                document.getElementById('senderName').textContent = data.sender.name || '-';
+                document.getElementById('senderRef').textContent = data.sender.reference || '-';
+                document.getElementById('senderAddress').textContent = data.sender.address || '-';
+                document.getElementById('senderPostcode').textContent = data.sender.postcode || '-';
+                document.getElementById('senderPhone').textContent = data.sender.phone || '-';
+                document.getElementById('senderCountry').textContent = data.sender.country || '-';
+            }
+
+            // Receiver Info - ALL FIELDS
+            if (data.receiver) {
+                document.getElementById('receiverName').textContent = data.receiver.name || '-';
+                document.getElementById('receiverAddress').textContent = data.receiver.address || '-';
+                document.getElementById('receiverPostcode').textContent = data.receiver.postcode || '-';
+                document.getElementById('receiverPhone').textContent = data.receiver.phone || '-';
+                document.getElementById('receiverCountry').textContent = data.receiver.country || '-';
+            }
+
+            // Shipment Details
+            if (data.shipment) {
+                document.getElementById('serviceType').textContent = data.shipment.serviceType || '-';
+                document.getElementById('weight').textContent = data.shipment.weight || '-';
+                document.getElementById('pieces').textContent = data.shipment.pieces || '-';
+                document.getElementById('route').textContent = data.shipment.route || '-';
+                document.getElementById('totalCharges').textContent = data.shipment.totalCharges ? '$' + data.shipment.totalCharges : '-';
+            }
+
+            // Initialize Map
+            initMap(data);
+
+            // Timeline
+            const timeline = data.timeline || [];
+            const timelineContainer = document.getElementById('timeline');
+            
+            if (timeline.length === 0) {
+                timelineContainer.innerHTML = '<p style="color: #64748b;">No tracking events available yet.</p>';
+            } else {
+                timelineContainer.innerHTML = timeline.map(event => `
+                    <div class="timeline-item ${event.status}">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <div class="timeline-title">${event.title}</div>
+                                <div class="timeline-date">${event.date}</div>
+                            </div>
+                            <div class="timeline-location">📍 ${event.location}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function initMap(data) {
+            const origin = data.sender?.country || 'USA';
+            const dest = data.receiver?.country || 'MALAYSIA';
+            
+            const originCoords = cityCoords[origin] || cityCoords['USA'];
+            const destCoords = cityCoords[dest] || cityCoords['MALAYSIA'];
+
+            if (map) map.remove();
+            
+            map = L.map('map').setView([(originCoords[0] + destCoords[0])/2, (originCoords[1] + destCoords[1])/2], 4);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            // Markers
+            L.marker(originCoords).addTo(map).bindPopup('<b>Origin:</b> ' + origin);
+            L.marker(destCoords).addTo(map).bindPopup('<b>Destination:</b> ' + dest);
+
+            // Route line
+            L.polyline([originCoords, destCoords], {
+                color: '#3b82f6',
+                weight: 3,
+                opacity: 0.8,
+                dashArray: '10, 10'
+            }).addTo(map);
+
+            map.fitBounds([originCoords, destCoords], {padding: [50, 50]});
+        }
+
+        // Enter key support
+        document.getElementById('trackingInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') trackShipment();
+        });
+    </script>
+</body>
+</html>
